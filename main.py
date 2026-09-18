@@ -1,7 +1,5 @@
 import random
 
-# --- МЕХАНИКА ЗАКЛИНАНИЙ ---
-
 class Spell:
     def __init__(self, name, mana_cost, effect_type):
         self.name = name
@@ -10,21 +8,17 @@ class Spell:
 
 class Spellbook:
     def __init__(self):
-        # База из трех возможных заклинаний
         all_available_spells = [
-            Spell("Магический панцирь", 25, 'armor'),
-            Spell("Длань судьбы", 50, 'damage_heal'),
-            Spell("Жажда крови", 40, 'global_damage_buff')
+            Spell("Frost shield", 25, 'armor'),
+            Spell("Mist coil", 50, 'damage_heal'),
+            Spell("Bloodrage", 40, 'global_damage_buff')
         ]
-        # Маг получает 2 случайных заклинания из 3 при создании
         self.spells = random.sample(all_available_spells, 2)
 
     def get_affordable_spells(self, current_mana):
         return [spell for spell in self.spells if spell.mana_cost <= current_mana]
 
-# --- БАЗОВЫЙ КЛАСС ЮНИТА ---
-
-class Unit:
+class Hero:
     def __init__(self, name, hp, armor=0, damage=0, evasion=0.0):
         self.name = name
         self.hp = hp
@@ -43,13 +37,11 @@ class Unit:
         return self.base_armor + bonus_armor
 
     def take_damage(self, amount):
-        # Механика уклонения
         if random.random() < self.evasion:
             print(f"  💨 {self.name} виртуозно уклоняется от атаки! (Урон: 0)")
             return
 
         total_armor = self.get_total_armor()
-        # 1 ед. брони = 10% снижения урона
         damage_reduction = min(total_armor * 0.10, 1.0)
         final_damage = int(amount * (1 - damage_reduction))
         
@@ -71,23 +63,19 @@ class Unit:
             buff['turns'] -= 1
         self.buffs = [buff for buff in self.buffs if buff['turns'] > 0]
 
-    def act(self, all_units):
+    def act(self, all_heroes):
         pass
 
-# --- КЛАССЫ БОЙЦОВ ---
-
-class Warrior(Unit):
+class Warrior(Hero):
     def __init__(self, name, hp, damage):
-        # У воина по умолчанию 2 брони
         super().__init__(name, hp, armor=2, damage=damage)
 
-    def act(self, all_units):
-        enemies = [u for u in all_units if u.owner != self.owner and u.is_alive()]
+    def act(self, all_heroes):
+        enemies = [h for h in all_heroes if h.owner != self.owner and h.is_alive()]
         if enemies:
             target = random.choice(enemies)
             base_damage = random.randint(self.damage - 5, self.damage + 5)
             
-            # Шанс 20% на критический удар (150% урона)
             if random.random() <= 0.20:
                 final_damage = int(base_damage * 1.5)
                 print(f"🗡️ [КРИТ!] Воин {self.name} яростно атакует {target.name} на {final_damage} урона!")
@@ -97,28 +85,26 @@ class Warrior(Unit):
                 
             target.take_damage(final_damage)
 
-class Archer(Unit):
+class Archer(Hero):
     def __init__(self, name):
-        # У лучника 150 ХП, 30 урона, 1 броня и 20% уклонения
         super().__init__(name, hp=150, armor=1, damage=30, evasion=0.20)
 
-    def act(self, all_units):
-        enemies = [u for u in all_units if u.owner != self.owner and u.is_alive()]
+    def act(self, all_heroes):
+        enemies = [h for h in all_heroes if h.owner != self.owner and h.is_alive()]
         if enemies:
             target = random.choice(enemies)
             actual_damage = random.randint(self.damage - 5, self.damage + 5)
             print(f"🏹 Лучник {self.name} совершает меткий выстрел в {target.name} на {actual_damage} урона!")
             target.take_damage(actual_damage)
 
-class Magician(Unit):
+class Magician(Hero):
     def __init__(self, name):
-        # Магу фиксируем 200 ХП, без брони. Манапул 300.
         super().__init__(name, hp=200, armor=0, damage=0) 
         self.mana = 300
         self.spellbook = Spellbook()
 
-    def act(self, all_units):
-        alive_units = [u for u in all_units if u.is_alive()]
+    def act(self, all_heroes):
+        alive_heroes = [h for h in all_heroes if h.is_alive()]
         affordable_spells = self.spellbook.get_affordable_spells(self.mana)
 
         if not affordable_spells:
@@ -128,15 +114,13 @@ class Magician(Unit):
         spell = random.choice(affordable_spells)
         self.mana -= spell.mana_cost
 
-        # Обработка глобального заклинания
         if spell.effect_type == 'global_damage_buff':
             print(f"✨ Маг {self.name} кастует '{spell.name}'! (-{spell.mana_cost} маны). Все выжившие герои получают +5 к урону!")
-            for unit in alive_units:
-                unit.damage += 5
+            for hero in alive_heroes:
+                hero.damage += 5
             return
 
-        # Обработка таргетных заклинаний
-        target = random.choice(alive_units)
+        target = random.choice(alive_heroes)
         print(f"✨ Маг {self.name} применяет '{spell.name}' на {target.name} (-{spell.mana_cost} маны).")
 
         if spell.effect_type == 'armor':
@@ -149,18 +133,16 @@ class Magician(Unit):
             else:
                 target.take_damage(50)
 
-# --- ИГРОК И МЕНЕДЖЕР БОЯ ---
-
 class Player:
-    def __init__(self, name, units):
+    def __init__(self, name, heroes):
         self.name = name
-        self.units = units
-        for unit in self.units:
-            unit.owner = self
-            unit.name = f"[{self.name}] {unit.name}"
+        self.heroes = heroes
+        for hero in self.heroes:
+            hero.owner = self
+            hero.name = f"[{self.name}] {hero.name}"
 
     def is_alive(self):
-        return any(unit.is_alive() for unit in self.units)
+        return any(hero.is_alive() for hero in self.heroes)
 
 class Battle:
     def __init__(self, p1, p2):
@@ -174,24 +156,22 @@ class Battle:
         while self.p1.is_alive() and self.p2.is_alive():
             print(f"=== РАУНД {round_number} ===")
             
-            # Все живые юниты собираются и перемешиваются для случайной инициативы
-            all_alive = [u for u in self.p1.units + self.p2.units if u.is_alive()]
+            all_alive = [h for h in self.p1.heroes + self.p2.heroes if h.is_alive()]
             random.shuffle(all_alive)
 
-            for unit in all_alive:
-                if not unit.is_alive():
+            for hero in all_alive:
+                if not hero.is_alive():
                     continue
                 
                 if not self.p1.is_alive() or not self.p2.is_alive():
                     break 
 
-                unit.update_buffs()
-                unit.act(self.p1.units + self.p2.units)
+                hero.update_buffs()
+                hero.act(self.p1.heroes + self.p2.heroes)
                 
             print("") 
             round_number += 1
 
-        # Финал
         print("=============================")
         if self.p1.is_alive():
             print(f"🏆 ПОБЕДИТЕЛЬ: {self.p1.name}!")
@@ -199,25 +179,20 @@ class Battle:
             print(f"🏆 ПОБЕДИТЕЛЬ: {self.p2.name}!")
         print("=============================")
 
-# --- ТЕСТОВЫЙ ЗАПУСК ---
-
 if __name__ == "__main__":
-    # Команда 1
     team1 = [
         Warrior("Артур", hp=250, damage=35),
         Archer("Леголас"),
         Magician("Мерлин")
     ]
-    player1 = Player("Синие", team1)
+    player1 = Player("Player 1", team1)
 
-    # Команда 2
     team2 = [
         Warrior("Конан", hp=220, damage=40),
         Archer("Робин"),
         Magician("Гендальф")
     ]
-    player2 = Player("Красные", team2)
+    player2 = Player("Player 2", team2)
 
-    # Запуск
     battle = Battle(player1, player2)
     battle.start()
