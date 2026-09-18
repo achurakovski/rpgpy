@@ -8,12 +8,12 @@ class Spell:
 
 class Spellbook:
     def __init__(self):
-        all_available_spells = [
+        all_spells = [
             Spell("Frost shield", 25, 'armor'),
             Spell("Mist coil", 50, 'damage_heal'),
             Spell("Bloodrage", 40, 'global_damage_buff')
         ]
-        self.spells = random.sample(all_available_spells, 2)
+        self.spells = random.sample(all_spells, 2)
 
     def get_affordable_spells(self, current_mana):
         return [spell for spell in self.spells if spell.mana_cost <= current_mana]
